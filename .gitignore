@@ -1,0 +1,13 @@
+# Archivos temporales y de entorno
+.env
+*.tmp
+*.log
+
+# Carpeta de sincronización transitoria con la VM (excepto .gitkeep)
+workspace/*
+!workspace/.gitkeep
+
+# Llaves privadas extraídas durante prácticas (nunca subir llaves sin sanitizar)
+id_rsa*
+*.pem
+*.key
