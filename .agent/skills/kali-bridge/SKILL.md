@@ -1,60 +1,63 @@
 ---
 name: kali-bridge
 description: >-
-  Establece el puente de comunicación, ejecución remota y transferencia de
-  archivos entre el host Windows y la máquina virtual Kali-Linux-CLI. Úsese
-  cuando se requiera enviar scripts de prácticas, ejecutar comandos en Kali
-  Linux desde Windows (vía SSH con Port-Forwarding NAT o VBoxManage
-  guestcontrol/sharedfolder) y recolectar salidas de terminal o evidencias de
-  vuelta al repositorio local.
+  Establece el puente de comunicación autónomo entre el host Windows, la
+  máquina virtual Kali-Linux-CLI y el servidor objetivo ubuntuServer
+  (192.168.1.101). Úsese siempre para ejecutar comandos en Kali (como kali o
+  root), saltar por SSH al target ubuntuServer, sincronizar el repositorio en
+  /home/kali/repo o transferir archivos y evidencias.
 ---
 
 # Skill: Kali Bridge (`kali-bridge`)
 
-Esta skill gestiona el canal de comunicación bidireccional entre el host Windows (`D:\Orchestrator\VBox-AI-Agent`) y la máquina virtual atacante `Kali-Linux-CLI` (`192.168.1.4`) mediante el script [`scripts/kali-bridge.ps1`](../../../scripts/kali-bridge.ps1).
+Esta skill gestiona el puente bidireccional entre el host Windows (`D:\Orchestrator\VBox-AI-Agent`), la VM atacante `Kali-Linux-CLI` y la VM objetivo `ubuntuServer` (`192.168.1.101`) mediante [`scripts/kali-bridge.ps1`](../../../scripts/kali-bridge.ps1).
 
-## Mecanismos de Transporte Soportados
+## Ventajas Técnicas del Puente
 
-Dado que `Kali-Linux-CLI` opera dentro de la red NAT `cetipracticas` (`192.168.1.0/24`), el puente soporta tres métodos complementarios para comunicarse desde el host Windows:
+1. **Detección Dinámica de IP**: Obtiene en vivo la IP de `Kali-Linux-CLI` desde VirtualBox Guest Additions (`/VirtualBox/GuestInfo/Net/0/V4/IP`), sin importar qué IP le asigne el DHCP de `cetipracticas`.
+2. **Envoltura Base64 UTF-8**: Todo comando pasado en `-Command` se normaliza a `LF` y se codifica en Base64 antes de enviarse a `/bin/bash`. Esto elimina por completo errores de comillas, `$variables`, tuberías (`|`) o redirecciones (`>`) entre PowerShell y Bash.
+3. **Doble Transporte (`guestcontrol` + `ssh`)**:
+   - Canal primario: `VBoxManage guestcontrol` (funciona incluso sin red).
+   - Canal secundario: `SSH` por Port-Forwarding NAT (`127.0.0.1:2222 -> <KALI_IP>:22`) con llave Ed25519 sin contraseña (`workspace/.ssh/kali_agent_ed25519`).
+4. **Carpeta Compartida en Vivo (`/home/kali/repo`)**:
+   - El repositorio `D:\Orchestrator\VBox-AI-Agent` está montado en `/mnt/vbox_repo` y enlazado en `/home/kali/repo`. Todo script creado en `scripts/practicas/` está disponible al instante en la terminal de Kali.
 
-1. **SSH vía Port-Forwarding en Red NAT `cetipracticas` (Recomendado)**:
-   - Configura una regla de reenvío de puertos en la red NAT `cetipracticas` desde `127.0.0.1:2222` (Host Windows) hacia `192.168.1.4:22` (Kali Linux).
-   - Permite usar `ssh` y `scp` nativos de Windows (`OpenSSH Client`) con baja latencia y soporte completo de streams.
-2. **Carpetas Compartidas de VirtualBox (`sharedfolder`)**:
-   - Monta el directorio local `workspace/` del repositorio dentro de Kali Linux (`/mnt/vbox_workspace` o `/media/sf_vbox_workspace`) para sincronizar scripts (`scripts/kali-lab-state.sh`) y recolectar evidencias y logs automáticamente.
-3. **`VBoxManage guestcontrol`**:
-   - Permite ejecutar comandos directos dentro de `Kali-Linux-CLI` a través de VirtualBox Guest Additions sin depender del estado de la red:
-     ```powershell
-     & "C:\Program Files\Oracle\VirtualBox\VBoxManage.exe" guestcontrol "Kali-Linux-CLI" run --exe "/bin/bash" --username "kali" --password "<password>" -- -c "ip a"
-     ```
+## Comandos Principales
 
-## Uso de `scripts/kali-bridge.ps1`
-
-### 1. Configurar Regla de Port-Forwarding SSH y Carpeta Compartida (`setup`)
-Configura en `cetipracticas` la regla TCP `kali-ssh` (`127.0.0.1:2222 -> 192.168.1.4:22`) y registra la carpeta compartida `vbox_workspace`:
+### 1. Verificar Estado del Puente (`status`)
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\kali-bridge.ps1 -Action setup
+powershell -ExecutionPolicy Bypass -File .\scripts\kali-bridge.ps1 -Action status
 ```
 
-### 2. Verificar Conectividad con Kali (`ping` / `test-ssh`)
+### 2. Inicializar o Reparar el Puente (`bootstrap`)
+Configura `sudo NOPASSWD`, activa `ssh` en Kali, inyecta llaves SSH, actualiza el Port-Forwarding y monta `/home/kali/repo`:
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\kali-bridge.ps1 -Action test
+powershell -ExecutionPolicy Bypass -File .\scripts\kali-bridge.ps1 -Action bootstrap
 ```
 
-### 3. Ejecutar un Comando Remoto en Kali (`exec`)
+### 3. Ejecutar Comandos en Kali (`exec`)
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\kali-bridge.ps1 -Action exec -Command "hostname -I && nmap --version"
+# Como usuario kali
+powershell -ExecutionPolicy Bypass -File .\scripts\kali-bridge.ps1 -Action exec -Command "id && hostname -I"
+
+# Como root (sudo -n sin contraseña)
+powershell -ExecutionPolicy Bypass -File .\scripts\kali-bridge.ps1 -Action exec -AsRoot -Command "cat /etc/hosts"
+
+# Usando explícitamente el transporte SSH (127.0.0.1:2222)
+powershell -ExecutionPolicy Bypass -File .\scripts\kali-bridge.ps1 -Action exec -Transport ssh -Command "uname -a"
 ```
 
-### 4. Enviar un Script Local a Kali (`push`) y Recolectar Evidencias (`pull`)
+### 4. Ejecutar Comandos Directamente en `ubuntuServer` (`exec-target`)
 ```powershell
-# Enviar el gestor de estado del laboratorio a Kali
+# Con llave SSH por defecto (/home/kali/developer.key -> developer@192.168.1.101)
+powershell -ExecutionPolicy Bypass -File .\scripts\kali-bridge.ps1 -Action exec-target -Command "id && hostname && ss -tln"
+
+# Con otro usuario y contraseña (vía sshpass desde Kali)
+powershell -ExecutionPolicy Bypass -File .\scripts\kali-bridge.ps1 -Action exec-target -TargetUser "ftpuser" -TargetPassword "<PASSWORD>" -Command "id && pwd"
+```
+
+### 5. Transferir Archivos (`push` / `pull`)
+```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\kali-bridge.ps1 -Action push -LocalPath ".\scripts\kali-lab-state.sh" -RemotePath "/home/kali/kali-lab-state.sh"
-
-# Traer logs o capturas desde Kali hacia docs/practicas/evidencias/
-powershell -ExecutionPolicy Bypass -File .\scripts\kali-bridge.ps1 -Action pull -RemotePath "/home/kali/evidencias/*" -LocalPath ".\docs\practicas\evidencias\"
+powershell -ExecutionPolicy Bypass -File .\scripts\kali-bridge.ps1 -Action pull -RemotePath "/home/kali/hash_practica6.txt" -LocalPath ".\workspace\"
 ```
-
-## Pasos de Validación
-1. Ejecutar `-Action test` para verificar si el puerto `127.0.0.1:2222` responde o si Guest Additions se encuentra activo.
-2. Si el servicio `ssh` dentro de Kali está detenido, iniciarlo una vez desde la GUI de Kali con `sudo systemctl enable --now ssh`.
