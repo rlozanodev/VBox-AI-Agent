@@ -322,7 +322,7 @@ Serving HTTP on 0.0.0.0 port 8000 (http://0.0.0.0:8000/) ...
 
 ```
 You have solved Meow!
-Congratulations Eduma15 best of luck in capturing flags ahead!
+Congratulations Lozano best of luck in capturing flags ahead!
 #629953 Machine Rank
 14 Oct 2026 Pwn Date
 Retired Machine State

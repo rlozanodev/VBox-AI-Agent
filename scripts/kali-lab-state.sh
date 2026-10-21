@@ -117,7 +117,7 @@ fix_ssh_key() {
 }
 
 tunnel_up() {
-    local ssh_user="${1:-jorge}"
+    local ssh_user="${1:-lozano}"
     local ssh_key="${2:-}"
 
     if ss -tln | grep -q ":${LOCAL_TUNNEL_PORT} "; then

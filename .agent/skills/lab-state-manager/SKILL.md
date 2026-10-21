@@ -23,7 +23,7 @@ Esta skill implementa la [Regla 02 (Idempotencia y Limpieza)](../../rules/02-ide
    - Crea puntos de montaje idempotentes (`/mnt/nfs_respaldos` para `192.168.1.101:/srv/nfs/respaldos_ti` y `/mnt/smb_archivos` para `//192.168.1.101/archivos_ti`).
    - Verifica `mountpoint -q` antes de montar o desmontar.
 3. **Aseguramiento de Llaves SSH (`fix-ssh-key`)**:
-   - Aplica `chmod 600` y `chown $(id -u):$(id -g)` sobre cualquier llave privada extraída (ej. para los usuarios `jorge`, `ftpuser`, `developer` o `root`).
+   - Aplica `chmod 600` y `chown $(id -u):$(id -g)` sobre cualquier llave privada extraída (ej. para los usuarios `lozano`, `ftpuser`, `developer` o `root`).
 4. **Control de Túneles Locales SSH en Segundo Plano (`tunnel-up` / `tunnel-down`)**:
    - Inicia el Local Port Forwarding `127.0.0.1:5000 -> 127.0.0.1:5000` (Panel interno MongoDB en `ubuntuServer`) usando `ssh -f -N -L 5000:127.0.0.1:5000`, verificando previamente que el puerto `5000` no esté ocupado y registrando el estado.
 5. **Reversión Total (`cleanup`)**:
@@ -45,10 +45,10 @@ sudo ./scripts/kali-lab-state.sh init
 sudo ./scripts/kali-lab-state.sh mount-nfs
 
 # 4. Asegurar permisos de una llave SSH obtenida
-./scripts/kali-lab-state.sh fix-ssh-key /tmp/id_rsa_jorge
+./scripts/kali-lab-state.sh fix-ssh-key /tmp/id_rsa_lozano
 
 # 5. Abrir túnel local al puerto 5000 (Panel MongoDB)
-./scripts/kali-lab-state.sh tunnel-up jorge /tmp/id_rsa_jorge
+./scripts/kali-lab-state.sh tunnel-up lozano /tmp/id_rsa_lozano
 
 # 6. Limpieza completa del entorno (Zero-Footprint)
 sudo ./scripts/kali-lab-state.sh cleanup

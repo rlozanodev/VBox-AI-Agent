@@ -26,10 +26,28 @@ D:\Orchestrator\VBox-AI-Agent\
 │   ├── vbox-controller.ps1          # CLI PowerShell para gestionar VMs, red NAT y snapshots
 │   ├── kali-bridge.ps1              # CLI PowerShell para ejecución remota en Kali y salto a ubuntuServer
 │   ├── kali-lab-state.sh            # Script Bash idempotente para /etc/hosts, /mnt, llaves y túneles
+│   ├── vm-snap.ps1                  # Captura directa de framebuffer VirtualBox en Windows
+│   ├── vm-snap.sh                   # Wrapper Bash para capturas directas de framebuffer
+│   ├── build-report.ps1             # Compilador Pandoc a DOCX y subida/conversión a Google Docs
+│   ├── build-report.sh              # Wrapper Bash para compilar reporte con Pandoc
 │   ├── new-practice-report.ps1      # Generador de reportes Markdown y scripts interactivos de prácticas
 │   └── practicas/                   # Scripts Bash específicos por práctica académica (montados en /home/kali/repo)
-│       └── parcial1_practicas_01_a_06.sh # Flujo idempotente de Prácticas 1 a 6 y su reversión
+│       ├── parcial1_practicas_01_a_06.sh # Flujo idempotente de Prácticas 1 a 6 y su reversión
+│       ├── auto_hack_parte2.sh           # Suite interactiva de Post-Explotación (Prácticas 1 a 4 - Parte 2)
+│       └── revert_hack_parte2.sh         # Limpieza Zero-Footprint de Post-Explotación (Parte 2)
+├── auto_hack_parte2.sh              # Script principal de Post-Explotación en raíz
+├── revert_hack_parte2.sh            # Script de reversión de Post-Explotación en raíz
+├── Analisis_Practicas_PostExplotacion_Lozano.md # Análisis técnico Cyber Kill Chain y matriz CLI vs GUI
 └── docs/
+    ├── assets/                      # Evidencias fotográficas / screenshots organizados por práctica
+    │   ├── practica1_nosqli/        # Capturas de Port Forwarding y NoSQLi
+    │   ├── practica2_privesc_files/ # Capturas de escalada de privilegios y transferencia de archivos
+    │   ├── practica3_ssh_keys/      # Capturas de gestión de identidades y llaves SSH
+    │   └── practica4_gtfobins_ctf/  # Capturas de GTFOBins y Meow CTF resuelto por Lozano
+    ├── reportes/                    # Reportes ejecutivos consolidados en Markdown y DOCX
+    │   ├── REPORTE_PRACTICAS_LOZANO.md # Reporte maestro estructurado con evidencias
+    │   ├── Analisis_Practicas_PostExplotacion_Lozano.md # Copia en reportes del análisis Cyber Kill Chain
+    │   └── Reporte_Final_Lozano.docx   # Documento DOCX generado listo para Google Docs
     └── practicas/
         ├── _template.md             # Plantilla base estandarizada para reportes
         ├── parcial-01-practicas-01-a-06.md # Reporte consolidado de las Prácticas 1 a 6 con salidas reales
@@ -117,7 +135,7 @@ Detectada mediante `VBoxManage list natnets` y escaneo `nmap -sn 192.168.1.0/24`
 #### Artefactos, Credenciales y Usuarios Identificados
 - **Usuarios del Sistema Objetivo**:
   - `root` (`UID 0`)
-  - `jorge` (`UID 1000`)
+  - `lozano` (`UID 1000`)
   - `ftpuser` (`UID 1001`)
   - `developer` (`UID 1002`) — Acceso SSH directo sin passphrase mediante `/home/kali/developer.key`.
 - **Contenido de `/mnt/archivoCompartido` (`//app.cetilab.local/archivos_ti`)**:
@@ -131,11 +149,43 @@ Detectada mediante `VBoxManage list natnets` y escaneo `nmap -sn 192.168.1.0/24`
 
 ---
 
-## 4. Reglas Operativas Obligatorias
+## 4. Regla Estricta de Sanitización de Identidad (Obligatoria)
+
+- **Sanitización Global**: En toda configuración, metadatos, reportes, scripts, capturas o transcripciones, cualquier nombre o alias similar a `eduardo`, `lalo`, `nuño`, `Eduma15` o `jorge` debe reemplazarse estrictamente por **`lozan`** o **`lozano`**.
+- Ningún reporte generado ni evidencia registrada debe contener los nombres o alias vetados.
+
+---
+
+## 5. Sistema de Capturas Directas de Framebuffer (`vm-snap`)
+
+Para garantizar capturas limpias del laboratorio sin interferencia de ventanas del host anfitrión:
+- Script PowerShell: `.\scripts\vm-snap.ps1 -VmName "Kali-Linux-CLI" -OutputPath "docs/assets/<carpeta>/<archivo>.png"`
+- Script Bash: `./scripts/vm-snap.sh "Kali-Linux-CLI" "docs/assets/<carpeta>/<archivo>.png"`
+- Directorios organizados de evidencias:
+  - `docs/assets/practica1_nosqli/`
+  - `docs/assets/practica2_privesc_files/`
+  - `docs/assets/practica3_ssh_keys/`
+  - `docs/assets/practica4_gtfobins_ctf/`
+
+---
+
+## 6. Pipeline de Compilación y Reportes hacia Google Docs (`build-report` & MCP)
+
+- Script PowerShell: `.\scripts\build-report.ps1` (admite `-SkipUpload` para generar solo el archivo local DOCX).
+- Script Bash: `./scripts/build-report.sh [input] [output] [--skip-upload]`.
+- Flujo de procesamiento:
+  1. Toma `docs/reportes/REPORTE_PRACTICAS_LOZANO.md`.
+  2. Compila con Pandoc a `docs/reportes/Reporte_Final_Lozano.docx` resolviendo assets en `./docs/assets/`.
+  3. Si `@googleworkspace/cli` (`gws`) está autenticado (`gws auth login` o `gws auth setup`), sube el archivo a Google Drive con `mimeType: application/vnd.google-apps.document`, transformándolo en un documento editable en Google Docs con imágenes, tablas y bloques formateados.
+- Servidor MCP: Configurado en `~/.gemini/config/mcp_config.json` y `~/.claude.json` mediante `gws mcp -s docs,drive`.
+
+---
+
+## 7. Reglas Operativas Obligatorias
 
 Todo agente debe cumplir estrictamente las 4 reglas modulares definidas en `.agent/rules/`:
 
 1. **[`.agent/rules/01-vbox-host-windows.md`](./.agent/rules/01-vbox-host-windows.md)**: Operación de VirtualBox en Windows (`vbox-controller.ps1`).
 2. **[`.agent/rules/02-idempotencia-y-limpieza.md`](./.agent/rules/02-idempotencia-y-limpieza.md)**: Idempotencia (`/etc/hosts`, `/mnt`, llaves SSH) y limpieza Zero-Footprint.
-3. **[`.agent/rules/03-evidencia-y-reportes.md`](./.agent/rules/03-evidencia-y-reportes.md)**: Pausas interactivas (`read -p`) para capturas y reportes en `docs/practicas/`.
+3. **[`.agent/rules/03-evidencia-y-reportes.md`](./.agent/rules/03-evidencia-y-reportes.md)**: Sanitización, capturas `vm-snap`, pipeline `build-report` y pausas `read -p`.
 4. **[`.agent/rules/04-guia-operativa-modelos-rapidos.md`](./.agent/rules/04-guia-operativa-modelos-rapidos.md)**: Playbook determinista de comandos `kali-bridge.ps1` para modelos rápidos (como Gemini 3.8 Flash).
