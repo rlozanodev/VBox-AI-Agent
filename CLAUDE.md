@@ -1,65 +1,65 @@
 # CLAUDE.md — Guía Puente para Claude Code y Agentes de Terminal
 
-Este archivo conecta a **Claude Code**, **Antigravity CLI** y modelos ligeros (como **Gemini 3.8 Flash**) con la arquitectura de reglas agnósticas y las skills de este repositorio.
+Este archivo conecta a **Claude Code**, **Antigravity CLI** y modelos rápidos (como **Gemini 3.8 Flash**) con la arquitectura de reglas agnósticas, las skills y el **Modo Copiloto Interactivo para Examen Práctico**.
+
+---
 
 ## 1. Importación de Contexto y Reglas Obligatorias
 
 Lee y aplica siempre las directrices definidas en el archivo maestro y en las reglas modulares:
 
-- **Contexto Maestro y Topología del Laboratorio**: @[AGENTS.md](./AGENTS.md)
+- **Contexto Maestro y Protocolo de Examen**: @[AGENTS.md](./AGENTS.md)
 - **Regla 01 (Host Windows y VirtualBox)**: @[.agent/rules/01-vbox-host-windows.md](./.agent/rules/01-vbox-host-windows.md)
 - **Regla 02 (Idempotencia y Limpieza Zero-Footprint)**: @[.agent/rules/02-idempotencia-y-limpieza.md](./.agent/rules/02-idempotencia-y-limpieza.md)
 - **Regla 03 (Sanitización, Evidencias, vm-snap y build-report)**: @[.agent/rules/03-evidencia-y-reportes.md](./.agent/rules/03-evidencia-y-reportes.md)
-- **Regla 04 (Playbook para Modelos Rápidos - Gemini 3.8 Flash)**: @[.agent/rules/04-guia-operativa-modelos-rapidos.md](./.agent/rules/04-guia-operativa-modelos-rapidos.md)
+- **Regla 04 (Protocolo Copiloto Interactivo - Examen a Ciegas)**: @[.agent/rules/04-modo-examen-interactivo.md](./.agent/rules/04-modo-examen-interactivo.md)
+- **Regla 05 (Playbook kali-bridge para Modelos Rápidos)**: @[.agent/rules/05-guia-operativa-modelos-rapidos.md](./.agent/rules/05-guia-operativa-modelos-rapidos.md)
+
+---
 
 ## 2. Regla Estricta de Sanitización de Identidad (Obligatoria)
 
 - **Sanitización Global**: En toda configuración, reporte, script o evidencia, cualquier nombre o alias similar a `eduardo`, `lalo`, `nuño`, `Eduma15` o `jorge` debe reemplazarse obligatoriamente por **`lozan`** o **`lozano`**.
+- Autor oficial: **Roberto Lozano**.
 
-## 3. Skills Disponibles en el Repositorio
+---
 
-1. **`vbox-controller`**: [`SKILL.md`](./.agent/skills/vbox-controller/SKILL.md) — Control de VMs (`Kali-Linux-CLI` y `ubuntuServer`), red NAT `cetipracticas` y snapshots.
-2. **`kali-bridge`**: [`SKILL.md`](./.agent/skills/kali-bridge/SKILL.md) — Ejecución remota en Kali (`exec`), salto directo a `ubuntuServer` (`exec-target`), carpeta compartida `/home/kali/repo` y transferencia de archivos.
-3. **`lab-state-manager`**: [`SKILL.md`](./.agent/skills/lab-state-manager/SKILL.md) — Gestión idempotente de `/etc/hosts`, montajes NFS/SMB en `/mnt/`, permisos `chmod 600` de llaves SSH y túneles locales (`127.0.0.1:5000`).
-4. **`report-generator`**: [`SKILL.md`](./.agent/skills/report-generator/SKILL.md) — Generación de reportes estandarizados en `docs/practicas/` y scripts con pausas `read -p`.
+## 3. Modo Copiloto Interactivo de Examen (Ciclo Human-in-the-Loop)
 
-## 4. Comandos Rápidos del Puente (Host Windows - PowerShell)
+Durante el examen práctico, no se asume ninguna IP ni configuración fija. Operamos en ciclos cortos:
+1. **Paso A**: Propuesta unitaria de comando y objetivo analítico.
+2. **Paso B**: Lectura minuciosa y razonamiento de la salida entregada por el usuario.
+3. **Paso C**: Actualización inmediata de `docs/examen_practico/notas_hallazgos.md`.
+4. **Paso D**: Captura con `vm-snap.ps1` en `docs/examen_practico/assets/` y redacción de `docs/examen_practico/REPORTE_EXAMEN_LOZANO.md`.
+
+---
+
+## 4. Skills Disponibles en el Repositorio
+
+1. **`vbox-controller`**: [`SKILL.md`](./.agent/skills/vbox-controller/SKILL.md) — Control de VMs en VirtualBox y red NAT.
+2. **`kali-bridge`**: [`SKILL.md`](./.agent/skills/kali-bridge/SKILL.md) — Ejecución remota en Kali (`exec`), carpeta compartida `/home/kali/repo` y puente hacia el target.
+3. **`lab-state-manager`**: [`SKILL.md`](./.agent/skills/lab-state-manager/SKILL.md) — Gestión idempotente de resoluciones, montajes y túneles.
+4. **`report-generator`**: [`SKILL.md`](./.agent/skills/report-generator/SKILL.md) — Estandarización de reportes y evidencias Markdown.
+
+---
+
+## 5. Comandos Rápidos del Laboratorio (PowerShell en Windows)
 
 ```powershell
-# 1. Verificar estado de las VMs y del puente hacia Kali + ubuntuServer
+# 1. Auditar VMs registradas en VirtualBox
+powershell -ExecutionPolicy Bypass -File .\scripts\vbox-controller.ps1 -Action list
 powershell -ExecutionPolicy Bypass -File .\scripts\vbox-controller.ps1 -Action status
+
+# 2. Verificar estado del puente SSH hacia Kali
 powershell -ExecutionPolicy Bypass -File .\scripts\kali-bridge.ps1 -Action status
 
-# 2. Ejecutar comando en Kali-Linux-CLI (como usuario kali o como root con -AsRoot)
-powershell -ExecutionPolicy Bypass -File .\scripts\kali-bridge.ps1 -Action exec -Command "hostname -I && ls -la /home/kali"
+# 3. Ejecutar comando en Kali-Linux-CLI (como usuario kali o como root con -AsRoot)
+powershell -ExecutionPolicy Bypass -File .\scripts\kali-bridge.ps1 -Action exec -Command "hostname -I && ip route"
 powershell -ExecutionPolicy Bypass -File .\scripts\kali-bridge.ps1 -Action exec -AsRoot -Command "cat /etc/hosts"
 
-# 3. Ejecutar comando directamente en el Target ubuntuServer (192.168.1.101) vía salto SSH
-powershell -ExecutionPolicy Bypass -File .\scripts\kali-bridge.ps1 -Action exec-target -Command "id && hostname && ss -tln"
+# 4. Captura de Framebuffer VirtualBox (Guardar en docs/examen_practico/assets/)
+powershell -ExecutionPolicy Bypass -File .\scripts\vm-snap.ps1 -VmName "Kali-Linux-CLI" -OutputPath "docs/examen_practico/assets/01_red.png"
 
-# 4. Reparar/Inicializar el puente si se reiniciaron las VMs
-powershell -ExecutionPolicy Bypass -File .\scripts\kali-bridge.ps1 -Action bootstrap
-```
-
-## 5. Capturas de Framebuffer VirtualBox (`vm-snap`)
-
-```powershell
-# Tomar captura limpia del framebuffer de Kali Linux
-powershell -ExecutionPolicy Bypass -File .\scripts\vm-snap.ps1 -VmName "Kali-Linux-CLI" -OutputPath "docs/assets/practica1_nosqli/01_burp_login.png"
-
-# Tomar captura de ubuntuServer
-powershell -ExecutionPolicy Bypass -File .\scripts\vm-snap.ps1 -VmName "ubuntuServer" -OutputPath "docs/assets/practica2_privesc_files/02_target_console.png"
-```
-
-## 6. Pipeline de Compilación de Reportes (`build-report` & Google Docs)
-
-```powershell
-# Compilar reporte Markdown a DOCX y subirlo/convertirlo a Google Docs
-powershell -ExecutionPolicy Bypass -File .\scripts\build-report.ps1
-
-# Solo compilar DOCX localmente (sin subida)
-powershell -ExecutionPolicy Bypass -File .\scripts\build-report.ps1 -SkipUpload
-
-# Servidor MCP de Google Workspace configurado:
-# cmd /c gws mcp -s docs,drive
+# 5. Compilar reporte Markdown a DOCX local
+powershell -ExecutionPolicy Bypass -File .\scripts\build-report.ps1 -InputFile "docs/examen_practico/REPORTE_EXAMEN_LOZANO.md" -OutputFile "docs/examen_practico/Reporte_Examen_Lozano.docx" -SkipUpload
 ```
